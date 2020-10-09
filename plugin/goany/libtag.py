@@ -3,7 +3,7 @@ import os
 import sys
 import subprocess
 import threading
-import ctags
+from . import ctags
 
 class g:
     iskernel = False
@@ -108,8 +108,9 @@ def walk(root,  relat_path = None, depth=0):
         if item[0] == '.':
             continue
 
-        if 0 == depth:
-            if item == 'tools' or item == 'samples' or item == 'scripts':
+        if 0 == depth and g.iskernel:
+            skip = ['tools', 'samples', 'scripts', 'usr', 'Documentation', 'lib']
+            if item in skip:
                 continue
 
         full_path = os.path.join(root, item)

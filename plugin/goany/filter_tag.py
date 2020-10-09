@@ -90,7 +90,7 @@ def TagFilter():
         return
 
     if tag_filter.INSTANCE:
-        tag_filter.show()
+        tag_filter.INSTANCE.show()
         return
 
     tag_filter()

@@ -12,6 +12,9 @@ class g:
     last_path = None
     last_pos  = None
     last_tag  = None
+    msg = ''
+
+    taglist_cur = None
 
 def encode(cmd):
     # 把 tags 文件的里 命令式 tag 进行转码
@@ -37,6 +40,13 @@ def goto_file(path):
     else:
         vim.command('silent edit %s'  % path)
 
+def goto_pos(pos):
+    vim.current.window.cursor = pos
+
+    try:
+        vim.command('normal zz')
+    except vim.error as e:
+        logging.error(e)
 
 
 class TagStack(object):
@@ -66,28 +76,75 @@ class TagStack(object):
 
 
 class TagOne(libtag.Line):
+    def back(self):
+        goto_file(self.last_file)
+        goto_pos(self.last_cursor)
+
     def goto(self):
         self.last_file = vim.current.buffer.name
         self.last_cursor = vim.current.window.cursor
-        return self._goto()
 
-    def _goto(self):
+        g.last_tag = self.tag
         g.last_pos = None
         g.last_path = None
-        g.last_tag = self.tag
 
+        self._goto()
+
+    def _goto(self):
         tag = self.tag
-
-        msg = ''
 
         root = pyvim.get_cur_root()
         path = os.path.join(root, self.file_path)
-        #logging.error('goto path: %s, %s, %s, %s' %(path, pattern, tag, pos))
 
         goto_file(path)
 
+        n = self.get_pos_real_time()
+        if not n:
+            return
+
+        line = vim.current.buffer[n - 1]
+        col = line.find(tag)
+        if col >= 0:
+            pos = (n, col)
+        else:
+            pos = (n, 0)
+
+        goto_pos(pos)
+
+        g.last_pos = pos
+        g.last_path = path
+
+
+    def get_pos_real_time(self):
+        taglist = []
+
+        for t in g.taglist_cur:
+            if t.file_path == self.file_path:
+                taglist.append(t)
+
+        taglist.sort(key = lambda x: x.line_nu)
+
+        index = taglist.index(self)
+
+        tags = libtag.parse(vim.current.buffer.name)
+        for t in tags:
+            if t.tag != self.tag:
+                continue
+
+            index -= 1
+            if index >= 0:
+                continue
+
+            break
+        else:
+            return
+
+        return t.line_nu + 1
+
+    def get_pos(self):
         pattern = self.pattern
         pattern_nu = None
+
         if self.line_nu:
             pattern_nu = self.line_nu
         else:
@@ -99,45 +156,17 @@ class TagOne(libtag.Line):
 
                 if l.find(tag) > -1 and None == pattern_nu_b:
                     pattern_nu_b  = i
-                    logging.error('suspicious pattern(%s): %s: %s', tag, l, pattern)
 
             else:
-                msg = "linue num is guessed"
+                g.msg = "linue num is guessed"
                 pattern_nu  = pattern_nu_b
 
 
         if pattern_nu == None:
-            return 'error patten: %s' % pattern
+            g.msg = 'error patten: %s' % pattern
+            return
 
-        pattern = vim.current.buffer[pattern_nu]
-        col_nu = pattern.find(tag)
-        if col_nu < 0:
-            col_nu = 0
-
-        pos = (pattern_nu + 1, col_nu)
-
-        vim.current.window.cursor = pos
-        g.last_pos = pos
-        g.last_path = path
-
-        try:
-    #        vim.command('%foldopen!')
-            vim.command('normal zz')
-        except vim.error as e:
-            logging.error(e)
-
-        return msg
-
-    def back(self):
-        goto_file(self.last_file)
-
-        vim.current.window.cursor = self.last_cursor
-
-        try:
-#            vim.command('%foldopen!')
-            vim.command('normal zz')
-        except vim.error as e:
-            logging.error(e)
+        return pattern_nu + 1
 
 
 class TagFrame(object):
@@ -188,11 +217,15 @@ class TagFrame(object):
     def _goto(self, index):
         tag  = self.taglist[index]
 
-        msg = tag.goto()
+        g.taglist_cur = self.taglist
+
+        tag.goto()
         TagStack().push(tag)
 
+        g.taglist_cur = None
+
         pyvim.echoline('Tag(%s) goto %s/%s kind: %s. [%s]' %
-                (tag.tag, index + 1, self.num, tag.kind, msg))
+                (tag.tag, index + 1, self.num, tag.kind, g.msg))
 
     def ui_select(self):
         '使用 frainui 展示, 用户进行选择'
@@ -215,7 +248,7 @@ class TagFrame(object):
             if isinstance(l, str):
                 l = l.strip()
 
-            tt = r"%s  %s|%s" % (f.ljust(maxlen), t.kind[0:3], l)
+            tt = r"%s  %s|%s" % (f.ljust(maxlen), t.kind, l)
             line = encode(tt)
             lines.append(line)
 
@@ -315,16 +348,21 @@ def TagBack():
 
     tag.back()
 
-@pyvim.cmd()
-def TagRefresh():
+
+def refresh():
     root = pyvim.get_cur_root()
 
     libtag.refresh(root)
 
     vim.command("echo 'the ctags is ok'")
 
+@pyvim.cmd()
+def TagRefresh():
+    libtag.g.iskernel = False;
+    refresh()
+
 
 @pyvim.cmd()
 def TagKernel():
     libtag.g.iskernel = True;
-    TagRefresh()
+    refresh()
