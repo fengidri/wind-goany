@@ -10,6 +10,8 @@ from frainui import Search
 import vim
 import time
 
+class g:
+    recent = []
 
 def getfiles(path):
     lines = []
@@ -32,13 +34,12 @@ def getfiles(path):
             f = os.path.join(root, f)
             lines.append(f[lenght:])
 
-    for b in vim.buffers:
-        name = b.name
+    for name in g.recent:
         if name.startswith(path):
             name = name[lenght:]
             if name in lines:
                 lines.remove(name)
-                lines.insert(0, name)
+                lines.insert(0, name + ' *')
 
     return lines
 
@@ -62,15 +63,24 @@ class file_filter(object):
 
     def quit(self, win, index):
         file_filter.INSTANCE = None
-        if not index:
+        if None == index:
             return
 
-        if index > -1:
-            path = os.path.join(self.path, self.fs[index])
-            pyvim.log.info("i got : %s", path)
+        if index <= -1:
+            return
 
-            vim.command("update")
-            vim.command("edit %s" % path)
+        f = self.fs[index]
+        if f.endswith(' *'):
+            f = f[0:-2]
+
+        path = os.path.join(self.path, f)
+        pyvim.log.info("i got : %s", path)
+
+        vim.command("update")
+        vim.command("edit %s" % path)
+
+        if path not in g.recent:
+            g.recent.append(path)
 
     def show(self):
         pyvim.log.error('call show')

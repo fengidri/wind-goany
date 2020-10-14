@@ -142,28 +142,27 @@ class TagOne(libtag.Line):
         return t.line_nu + 1
 
     def get_pos(self):
-        pattern = self.pattern
-        pattern_nu = None
-
         if self.line_nu:
-            pattern_nu = self.line_nu
+            return self.line_nu + 1
+
+        pattern_nu = None
+        pattern_nu_b = None
+
+        for i, l in enumerate(vim.current.buffer):
+            if l == self.pattern:
+                pattern_nu = i
+                break
+
+            if l.find(tag) > -1 and None == pattern_nu_b:
+                pattern_nu_b  = i
+
         else:
-            pattern_nu_b = None
-            for i, l in enumerate(vim.current.buffer):
-                if l == pattern:
-                    pattern_nu = i
-                    break
-
-                if l.find(tag) > -1 and None == pattern_nu_b:
-                    pattern_nu_b  = i
-
-            else:
-                g.msg = "linue num is guessed"
-                pattern_nu  = pattern_nu_b
+            g.msg = "linue num is guessed"
+            pattern_nu  = pattern_nu_b
 
 
         if pattern_nu == None:
-            g.msg = 'error patten: %s' % pattern
+            g.msg = 'error patten: %s' % self.pattern
             return
 
         return pattern_nu + 1

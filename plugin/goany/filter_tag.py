@@ -19,37 +19,6 @@ def ctag(filename):
 
         linenu.append(t.line_nu)
     return name, linenu
-    cmd = r"ctags --sort=no -f - -n --fields=-lzf --regex-c='/^SYSCALL_DEFINE[[:digit:]]?\(([^,)]+).*/syscall_\1/' %s" % filename
-    f = os.popen(cmd)
-
-    lines = f.readlines()
-    f.close()
-    tags = pyvim.parse_tags(lines)
-
-    l = {'v':[], 'm':[], 'f':[]}
-
-    for tag, v in tags.items():
-        for f, cmd, ext in v:
-            if not ext:
-                continue
-
-            t = ext[0]
-            if t not in 'vmf':
-                continue
-
-            if len(ext) > 1:
-                tag = "%s.%s" % (ext[1], tag)
-
-            l[t].append((tag, cmd))
-
-    for v in l.values():
-        v.sort(key = lambda x:x[0])
-
-    o = l['f']
-    o.extend(l['v'])
-    o.extend(l['m'])
-
-    return zip(*o)
 
 class tag_filter(object):
     INSTANCE = None
