@@ -13,23 +13,40 @@ import time
 class g:
     recent = []
 
-def getfiles(path):
+
+def check_file(f):
+    if f[0] == '.':
+        return False
+
+    suffix = f.split('.')
+    if len(suffix) > 1:
+        suffix = suffix[-1]
+        if suffix in ['o', 'so', 'pyc', 'lo', 'd']:
+            return False
+
+    return True
+
+def getfiles(path, cur_path):
     lines = []
     lenght = len(path)
     if path[-1] != '/':
         lenght += 1
 
-    for root, ds, fs  in os.walk(path):
-        ds[:] = [d for d in ds if d[0] != '.']
+    for root, ds, fs in os.walk(cur_path):
         for f in fs:
-            if f[0] == '.':
+            if not check_file(f):
                 continue
 
-            suffix = f.split('.')
-            if len(suffix) > 1:
-                suffix = suffix[-1]
-                if suffix in ['o', 'so', 'pyc', 'lo', 'd']:
-                    continue
+            f = os.path.join(root, f)
+            lines.append(f[lenght:])
+
+    for root, ds, fs in os.walk(path):
+        if root.startswith(cur_path):
+            continue
+
+        for f in fs:
+            if not check_file(f):
+                continue
 
             f = os.path.join(root, f)
             lines.append(f[lenght:])
@@ -52,7 +69,7 @@ class file_filter(object):
         file_filter.INSTANCE = self
 
         self.path = path
-        self.fs = getfiles(path)
+        self.fs = getfiles(path, os.path.dirname(vim.current.buffer.name))
 
         s = time.time()
         pyvim.log.debug("getfiles use time: %s" % (time.time() - s))
