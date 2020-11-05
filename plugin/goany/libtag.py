@@ -109,7 +109,7 @@ def walk(root,  relat_path = None, depth=0):
             continue
 
         if 0 == depth and g.iskernel:
-            skip = ['tools', 'samples', 'scripts', 'usr', 'Documentation', 'lib']
+            skip = ['tools', 'samples', 'scripts', 'usr', 'Documentation']
             if item in skip:
                 continue
 

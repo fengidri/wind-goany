@@ -98,6 +98,7 @@ class file_filter(object):
 
         if path not in g.recent:
             g.recent.append(path)
+            g.recent.sort()
 
     def show(self):
         pyvim.log.error('call show')
