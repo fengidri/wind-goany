@@ -6,9 +6,9 @@
 
 import os
 import pyvim
-from frainui import Search
 import vim
 import time
+import popup
 
 class g:
     recent = []
@@ -64,27 +64,41 @@ def getfiles(path, cur_path):
 
 
 class file_filter(object):
-    INSTANCE = None
     def __init__(self, path):
-        file_filter.INSTANCE = self
-
         self.path = path
         self.fs = getfiles(path, os.path.dirname(vim.current.buffer.name))
 
         s = time.time()
         pyvim.log.debug("getfiles use time: %s" % (time.time() - s))
 
-        self.win = Search(self.fs)
-        self.win.FREventBind("Search-Quit", self.quit)
+        popup.PopupSearch(self.filter_cb, self.finish_cb, center = True)
 
+    def filter_cb(self, words, bwords):
+        self.active_index = None
+        if not words:
+            return self.fs
 
-    def quit(self, win, index):
-        file_filter.INSTANCE = None
-        if None == index:
+        self.active_index = []
+        o = []
+
+        for i,line in enumerate(self.fs):
+            for w in words:
+                if line.find(w) == -1:
+                    break
+            else:
+                o.append(line)
+                self.active_index.append(i)
+
+        return o
+
+    def finish_cb(self, ret):
+        if ret <= -1:
             return
 
-        if index <= -1:
-            return
+        if self.active_index:
+            index = self.active_index[ret]
+        else:
+            index = ret
 
         f = self.fs[index]
         if f.endswith(' *'):
@@ -100,17 +114,8 @@ class file_filter(object):
             g.recent.append(path)
             g.recent.sort()
 
-    def show(self):
-        pyvim.log.error('call show')
-        self.win.BFToggle()
-
 
 def FileFilter():
-    if file_filter.INSTANCE:
-        file_filter.INSTANCE.show()
-        return
-
-
     name = vim.current.buffer.name
     root = None
     for r in pyvim.Roots:

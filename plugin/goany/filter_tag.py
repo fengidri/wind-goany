@@ -9,6 +9,7 @@ import pyvim
 from frainui import Search
 import vim
 from . import libtag
+import popup
 
 def ctag(filename):
     tags = libtag.parse(filename)
@@ -21,45 +22,52 @@ def ctag(filename):
     return name, linenu
 
 class tag_filter(object):
-    INSTANCE = None
     def __init__(self):
-        tag_filter.INSTANCE = self
-
         vim.command('update')
+
         tags_name, tags_lineno = ctag(vim.current.buffer.name)
-        #tags.sort()
-        self.win = Search(tags_name)
+
         self.tags_lineno = tags_lineno
+        self.tags_name = tags_name
 
-        self.win.FREventBind("Search-Quit", self.quit)
+        popup.PopupSearch(self.filter_cb, self.finish_cb)
 
+    def filter_cb(self, words, bwords):
+        self.active_index = None
+        if not words:
+            return self.tags_name
 
-    def quit(self, win, index):
-        tag_filter.INSTANCE = None
-        if None == index:
+        self.active_index = []
+        o = []
+
+        for i,line in enumerate(self.tags_name):
+            for w in words:
+                if line.find(w) == -1:
+                    break
+            else:
+                o.append(line)
+                self.active_index.append(i)
+
+        return o
+
+    def finish_cb(self, ret):
+        if ret < 0:
             return
 
-        if index > -1:
-            linenu = self.tags_lineno[index]
-            if linenu:
-                vim.current.window.cursor = (linenu + 1, 0)
-                try:
-    #                vim.command('%foldopen!')
-                    vim.command('normal zz')
-                except vim.error as e:
-                    logging.error(e)
+        if self.active_index:
+            ret = self.active_index[ret]
 
-    def show(self):
-        pyvim.log.error('call show')
-        self.win.BFToggle()
+        linenu = self.tags_lineno[ret]
+        if linenu:
+            vim.current.window.cursor = (linenu + 1, 0)
+            try:
+                vim.command('normal zz')
+            except vim.error as e:
+                logging.error(e)
 
 
 def TagFilter():
     if not vim.current.buffer.name:
-        return
-
-    if tag_filter.INSTANCE:
-        tag_filter.INSTANCE.show()
         return
 
     tag_filter()

@@ -5,8 +5,8 @@ import os
 import pyvim
 import sys
 from pyvim import log as logging
-from frainui import Search
 from . import libtag
+import popup
 
 class g:
     last_path = None
@@ -227,7 +227,7 @@ class TagFrame(object):
                 (tag.tag, index + 1, self.num, tag.kind, g.msg))
 
     def ui_select(self):
-        '使用 frainui 展示, 用户进行选择'
+        '使用 popup 展示, 用户进行选择'
 
         lines = []
         maxlen = 0
@@ -251,8 +251,42 @@ class TagFrame(object):
             line = encode(tt)
             lines.append(line)
 
-        win = Search(lines)
-        win.FREventBind('Search-Quit', self.quit_search)
+        self.lines = lines
+
+        popup.PopupSearch(self.popup_filter_cb, self.popup_finish_cb)
+
+    def popup_filter_cb(self, words, bwords):
+        self.active_index = None
+        if not words:
+            return self.lines
+
+        self.active_index = []
+        o = []
+
+        for i,line in enumerate(self.lines):
+            for w in words:
+                if line.find(w) == -1:
+                    break
+            else:
+                o.append(line)
+                self.active_index.append(i)
+
+        return o
+
+    def popup_finish_cb(self, ret):
+        if ret < 0:
+            return
+
+        if self.active_index:
+            index = self.active_index[ret]
+        else:
+            index = ret
+
+        logging.error("tags search window get: %s", index)
+
+        self._goto(index)
+
+
 
     def goto_p(self):
         if self.tagname != g.last_tag:
@@ -304,16 +338,6 @@ class TagFrame(object):
                 return
 
         self.ui_select()
-
-
-    def quit_search(self, win, index):
-        logging.error("tags search window get: %s", index)
-
-        if index == None:
-            return
-
-        if index > -1:
-            self._goto(index)
 
 
 @pyvim.cmd()
