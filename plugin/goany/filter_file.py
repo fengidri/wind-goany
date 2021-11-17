@@ -71,7 +71,7 @@ class file_filter(object):
         s = time.time()
         pyvim.log.debug("getfiles use time: %s" % (time.time() - s))
 
-        popup.PopupSearch(self.filter_cb, self.finish_cb, center = True)
+        popup.PopupSearch(self.filter_cb, finish_cb = self.finish_cb, center = True)
 
     def filter_cb(self, words, bwords):
         self.active_index = None
@@ -128,7 +128,50 @@ def FileFilter():
     else:
         pyvim.echo("Not Found root in pyvim.Roots for current file.", hl=True)
 
+def cfile_goto():
+    if not pyvim.Roots:
+        return
 
-if __name__ == "__main__":
-    pass
+    root = pyvim.Roots[0]
+    l = vim.current.line.split(':')
+    if len(l) <= 4:
+        return
+
+    cfile = l[0]
+    linenu = l[1]
+    col = l[2]
+
+    if not linenu.isdigit():
+        return
+
+    if not col.isdigit():
+        return
+
+    f = os.path.basename(cfile)
+
+    for root, ds, fs in os.walk(root):
+        if f in fs:
+            path = os.path.join(root, f)
+            break
+    else:
+        return
+
+    vim.command('wincmd p')
+    w = vim.current.window
+    if not w.buffer.name:
+        for w in vim.windows:
+            name = w.buffer.name
+            if name.startswith(root):
+                vim.current.window = w
+                vim.command("update")
+                vim.command("edit %s" % path)
+                break
+        else:
+            vim.command('split %s' % path)
+    else:
+        vim.command("update")
+        vim.command("edit %s" % path)
+
+    vim.current.window.cursor = (int(linenu), int(col) - 1)
+
 

@@ -11,12 +11,15 @@ from . import tags
 
 
 import pyvim
-@pyvim.cmd(complete = ['file', 'tag'])
+@pyvim.cmd(complete = ['file', 'tag', 'cfile'])
 def GoAny(f, o=None):
     if f == 'file':
         filter_file.FileFilter()
 
-    elif f == 'tag':
+    if f == 'cfile':
+        filter_file.cfile_goto()
+
+    if f == 'tag':
         if o == None:
             pyvim.each('Nead Option')
             return
