@@ -104,16 +104,27 @@ def find_tag(root, tag):
 
     return o, None
 
+def walk_filter(parent, item, depth):
+    if not g.iskernel:
+        return False
 
-def walk(root,  relat_path = None, depth=0):
+    if 0 == depth:
+        skip = ['tools', 'samples', 'scripts', 'usr', 'Documentation']
+        if item in skip:
+            return True
+
+    if 1 == depth and parent == 'arch':
+        if item not in ['x86', 'arm64']:
+            return True
+
+
+def walk(root,  relat_path = None, depth=0, parent = None):
     for item in os.listdir(root):
         if item[0] == '.':
             continue
 
-        if 0 == depth and g.iskernel:
-            skip = ['tools', 'samples', 'scripts', 'usr', 'Documentation']
-            if item in skip:
-                continue
+        if walk_filter(parent, item, depth):
+            continue
 
         full_path = os.path.join(root, item)
         if relat_path:
@@ -125,7 +136,7 @@ def walk(root,  relat_path = None, depth=0):
             yield relat
 
         if os.path.isdir(full_path):
-            for item in walk(full_path, relat, depth + 1):
+            for item in walk(full_path, relat, depth + 1, parent = item):
                 yield item
 
 
