@@ -3,7 +3,9 @@ import os
 import sys
 import subprocess
 import threading
+import popup
 from . import ctags
+import time
 
 class g:
     iskernel = False
@@ -159,24 +161,49 @@ def ctags_proc(num, root):
 
     return ps
 
+class Dialog(object):
+    def __init__(self):
+        self.popup = popup.PopupDialog("Start refressh tags...")
+        self.start = time.time()
+
+    def append(self, msg):
+        t = time.time() - self.start
+        t = '%6.2fs ' % t
+        msg = t + msg
+        self.popup.append(msg, redraw = True)
 
 
-def refresh(root):
+
+def refresh(root, iskernel = False):
+    g.iskernel = iskernel
+    start = time.time()
+
+    dialog = Dialog()
+
     d = os.path.join(root, '.wind_ctags')
     if not os.path.exists(d):
         os.mkdir(d)
+
+    dialog.append('clean for %s' % d)
 
     for item in os.listdir(d):
         path = os.path.join(d, item)
         open(path, 'w').close()
 
+    dialog.append('start 50 proc')
 
     ps = ctags_proc(50, root)
 
-    send_stdin(root, ps)
+    dialog.append('start send file path to proc')
+    num = send_stdin(root, ps)
+    dialog.append('send %d file to proc' % num)
+    dialog.append('wait process done...')
 
-    for p in ps:
-        p.wait()
+    for pr in ps:
+        pr.wait()
+
+    dialog.append('complete!!')
+    dialog.append('<enter> for quit')
 
 def parse(path):
     o = []
@@ -192,36 +219,6 @@ def parse(path):
 if __name__== "__main__":
     #print find_tag(sys.argv[1], sys.argv[2])
     refresh(sys.argv[1])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
