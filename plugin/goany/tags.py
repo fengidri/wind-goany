@@ -7,6 +7,7 @@ import sys
 from pyvim import log as logging
 from . import libtag
 import popup
+import history
 
 class g:
     last_path = None
@@ -253,7 +254,8 @@ class TagFrame(object):
 
         self.lines = lines
 
-        popup.PopupSearch(self.popup_filter_cb, self.popup_finish_cb)
+        popup.PopupSearch(self.popup_filter_cb, finish_cb = self.popup_finish_cb,
+                filetype=vim.eval('&ft'))
 
     def popup_filter_cb(self, words, bwords):
         self.active_index = None
@@ -355,6 +357,9 @@ def Tag(tag = None):
         pyvim.echoline(err)
         return
 
+    h = 'Tag %s' % tag
+    history.history(h, cmd = h)
+
     frame = TagFrame(taglist)
 
     frame.goto()
@@ -372,20 +377,18 @@ def TagBack():
     tag.back()
 
 
-def refresh():
+def refresh(iskernel = False):
     root = pyvim.get_cur_root()
 
-    libtag.refresh(root)
+    libtag.refresh(root, iskernel)
 
     vim.command("echo 'the ctags is ok'")
 
 @pyvim.cmd()
 def TagRefresh():
-    libtag.g.iskernel = False;
     refresh()
 
 
 @pyvim.cmd()
 def TagKernel():
-    libtag.g.iskernel = True;
-    refresh()
+    refresh(iskernel = True)

@@ -173,5 +173,6 @@ def cfile_goto():
         vim.command("edit %s" % path)
 
     vim.current.window.cursor = (int(linenu), int(col) - 1)
+    vim.command("normal zz")
 
 

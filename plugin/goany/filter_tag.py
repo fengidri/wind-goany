@@ -10,12 +10,15 @@ from frainui import Search
 import vim
 from . import libtag
 import popup
+import history
 
 def ctag(filename):
     tags = libtag.parse(filename)
     name = []
     linenu = []
     for t in tags:
+        if t.show.find("EXPORT_SYMBOL(") == 0:
+            continue
         name.append(t.show)
 
         linenu.append(t.line_nu)
@@ -30,7 +33,7 @@ class tag_filter(object):
         self.tags_lineno = tags_lineno
         self.tags_name = tags_name
 
-        popup.PopupSearch(self.filter_cb, self.finish_cb)
+        popup.PopupSearch(self.filter_cb, finish_cb = self.finish_cb, filetype= vim.eval('&ft'))
 
     def filter_cb(self, words, bwords):
         self.active_index = None
@@ -60,6 +63,8 @@ class tag_filter(object):
         linenu = self.tags_lineno[ret]
         if linenu:
             vim.current.window.cursor = (linenu + 1, 0)
+            tag = self.tags_name[ret]
+            history.history("filter: %s" % tag)
             try:
                 vim.command('normal zz')
             except vim.error as e:
