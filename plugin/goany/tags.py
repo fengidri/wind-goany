@@ -74,6 +74,18 @@ class TagStack(object):
             return
         return self.stack.pop()
 
+    def refresh(self):
+        if self.stack:
+            tag = self.stack[-1]
+            g.last_pos = tag.pos
+            g.last_path = tag.pos
+            g.last_tag = tag.tag
+
+        else:
+            g.last_pos = None
+            g.last_path = None
+            g.last_tag = None
+
 
 
 class TagOne(libtag.Line):
@@ -111,6 +123,9 @@ class TagOne(libtag.Line):
             pos = (n, 0)
 
         goto_pos(pos)
+
+        self.pos = pos
+        self.path = path
 
         g.last_pos = pos
         g.last_path = path
@@ -257,7 +272,7 @@ class TagFrame(object):
         popup.PopupSearch(self.popup_filter_cb, finish_cb = self.popup_finish_cb,
                 filetype=vim.eval('&ft'))
 
-    def popup_filter_cb(self, words, bwords):
+    def popup_filter_cb(self, words):
         self.active_index = None
         if not words:
             return self.lines
@@ -317,6 +332,16 @@ class TagFrame(object):
                 self._goto(i)
                 return True
 
+    def goto_local_file(self):
+        if self.tagname == g.last_tag:
+            return
+
+        for i, tag in enumerate(self.taglist):
+            root = pyvim.get_cur_root()
+            path = os.path.join(root, tag.file_path)
+            if path == vim.current.buffer.name:
+                self._goto(i)
+                return True
 
     def goto(self, index = None):
         '不指定的情况下, 并且只一个纪录直接跳转'
@@ -329,6 +354,9 @@ class TagFrame(object):
 
         '如果有对应的申明 p, 并且当前还在上一次跳转之后的地方. 尝试去申明'
         if self.goto_p():
+            return
+
+        if self.goto_local_file():
             return
 
         '如果不算 p(申明) 只有一个, 直接跳转到另一个'
@@ -375,6 +403,7 @@ def TagBack():
         return 0
 
     tag.back()
+    stack.refresh()
 
 
 def refresh(iskernel = False):
