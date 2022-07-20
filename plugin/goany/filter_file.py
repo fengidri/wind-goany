@@ -18,30 +18,40 @@ def check_file(f):
     if f[0] == '.':
         return False
 
-    suffix = f.split('.')
-    if len(suffix) > 1:
-        suffix = suffix[-1]
-        if suffix in ['o', 'so', 'pyc', 'lo', 'd']:
+    for suffix in [
+            '.o',
+            '.so',
+            '.pyc',
+            '.lo',
+            '.d',
+            '.ko',
+            '.mod',
+            '.order',
+            '.mod.c',
+            '.a']:
+
+        if f.endswith(suffix):
             return False
 
     return True
 
-def getfiles(path, cur_path):
+def getfiles(path, cur_path = None):
     lines = []
     lenght = len(path)
     if path[-1] != '/':
         lenght += 1
 
-    for root, ds, fs in os.walk(cur_path):
-        for f in fs:
-            if not check_file(f):
-                continue
+    if cur_path:
+        for root, ds, fs in os.walk(cur_path):
+            for f in fs:
+                if not check_file(f):
+                    continue
 
-            f = os.path.join(root, f)
-            lines.append(f[lenght:])
+                f = os.path.join(root, f)
+                lines.append(f[lenght:])
 
     for root, ds, fs in os.walk(path):
-        if root.startswith(cur_path):
+        if cur_path and root.startswith(cur_path):
             continue
 
         for f in fs:
@@ -64,8 +74,10 @@ def getfiles(path, cur_path):
 
 
 class file_filter(object):
-    def __init__(self, path):
+    def __init__(self, path, cur):
         self.path = path
+        self.cur = cur
+        self.cur_fs = None
         self.fs = getfiles(path, os.path.dirname(vim.current.buffer.name))
 
         s = time.time()
@@ -73,23 +85,68 @@ class file_filter(object):
 
         popup.PopupSearch(self.filter_cb, finish_cb = self.finish_cb, center = True)
 
-    def filter_cb(self, words, bwords):
+    def check_bwords(self, f, bwords):
+        for b in bwords:
+            if f.find(b) > -1:
+                return False
+
+        return True
+
+    def check_words(self, f, words):
+        for w in words:
+            if f.find(w) == -1:
+                return False
+
+        return True
+
+    def filter_cb(self, words, line):
         self.active_index = None
+        hi_words = ['*']
         if not words:
-            return self.fs
+            return self.fs, hi_words
 
         self.active_index = []
         o = []
 
-        for i,line in enumerate(self.fs):
-            for w in words:
-                if line.find(w) == -1:
-                    break
-            else:
-                o.append(line)
-                self.active_index.append(i)
+        if words[0] == '@help':
+            o.append('first @: search inside current directory')
+            o.append('prefix -: means black list word')
+            return o
 
-        return o
+        if words[0] == '@':
+            words = words[1:]
+
+            if self.cur_fs == None:
+                self.cur_fs = getfiles(self.cur)
+
+            fs = self.cur_fs
+
+        else:
+            fs = self.fs
+
+        ws = words
+        words = []
+        bwords = []
+
+        for w in ws:
+            if w[0] == '-':
+                if w[1:]:
+                    bwords.append(w[1:])
+            else:
+                words.append(w)
+
+        for i,line in enumerate(fs):
+            if not self.check_bwords(line, bwords):
+                continue
+
+            if not self.check_words(line, words):
+                continue
+
+            o.append(line)
+            self.active_index.append(i)
+
+        words.append('*')
+        return o, words
 
     def finish_cb(self, ret):
         if ret <= -1:
@@ -124,7 +181,7 @@ def FileFilter():
             break
 
     if root:
-        file_filter(root)
+        file_filter(root, os.path.dirname(name))
     else:
         pyvim.echo("Not Found root in pyvim.Roots for current file.", hl=True)
 

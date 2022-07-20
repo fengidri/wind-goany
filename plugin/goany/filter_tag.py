@@ -35,7 +35,7 @@ class tag_filter(object):
 
         popup.PopupSearch(self.filter_cb, finish_cb = self.finish_cb, filetype= vim.eval('&ft'))
 
-    def filter_cb(self, words, bwords):
+    def filter_cb(self, words, line):
         self.active_index = None
         if not words:
             return self.tags_name

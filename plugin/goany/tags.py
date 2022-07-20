@@ -272,7 +272,7 @@ class TagFrame(object):
         popup.PopupSearch(self.popup_filter_cb, finish_cb = self.popup_finish_cb,
                 filetype=vim.eval('&ft'))
 
-    def popup_filter_cb(self, words):
+    def popup_filter_cb(self, words, line):
         self.active_index = None
         if not words:
             return self.lines
